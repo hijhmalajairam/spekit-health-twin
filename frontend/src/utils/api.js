@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: 'https://spekit-health-twin.onrender.com' })
 
 api.interceptors.request.use(config => {
   const user = JSON.parse(localStorage.getItem('ht_user') || 'null')
