@@ -1,110 +1,117 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 import { speksAPI } from '../utils/api'
+import { Plus, Trash2, Edit2, Save, X } from 'lucide-react'
 
-const CATEGORIES = ['Getting Started', 'AI Predictions', 'Vitals Tracking', 'Privacy & Data', 'Simulator Features', 'Body Map', 'Troubleshooting']
-const blank = { title: '', content: '', category: 'Getting Started', tooltip_hint: '' }
+const CATEGORIES = ['Getting Started', 'Vitals Tracking', 'AI Predictions', 'Simulator Features', 'Body Map', 'Privacy & Data']
+
+const empty = { title: '', content: '', category: 'Getting Started', tooltip_hint: '' }
 
 export default function Admin() {
   const [speks, setSpeks] = useState([])
-  const [form, setForm] = useState(blank)
-  const [editId, setEditId] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [form, setForm] = useState(empty)
+  const [editing, setEditing] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const load = () => speksAPI.getAll().then(r => setSpeks(r.data)).catch(() => {})
+  const load = () => speksAPI.getAll({}).then(r => setSpeks(r.data)).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
-  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
-
-  const handleSave = async () => {
-    if (!form.title || !form.content) return
-    setLoading(true)
+  const save = async () => {
+    setSaving(true)
     try {
-      if (editId) { await speksAPI.update(editId, form); flash('Spek updated!') }
-      else         { await speksAPI.create(form);         flash('Spek created!') }
-      setForm(blank); setEditId(null); setShowForm(false); load()
-    } catch { flash('Error saving spek') }
-    finally { setLoading(false) }
+      if (editing) { await speksAPI.update(editing, form); setEditing(null) }
+      else { await speksAPI.create(form) }
+      setForm(empty); load()
+    } finally { setSaving(false) }
   }
 
-  const handleEdit = (spek) => {
-    setForm({ title: spek.title, content: spek.content, category: spek.category, tooltip_hint: spek.tooltip_hint || '' })
-    setEditId(spek.id); setShowForm(true)
-  }
-
-  const handleDelete = async (id) => {
+  const del = async (id) => {
     if (!confirm('Delete this spek?')) return
-    await speksAPI.delete(id); flash('Deleted'); load()
+    await speksAPI.delete(id); load()
   }
+
+  const startEdit = (s) => { setEditing(s.id); setForm({ title: s.title, content: s.content, category: s.category, tooltip_hint: s.tooltip_hint || '' }) }
+  const cancel = () => { setEditing(null); setForm(empty) }
+
+  const inp = { background: '#0a0a12', border: '1px solid #1e1e2e', borderRadius: '8px', padding: '8px 12px', color: '#f0f0f8', fontSize: '13px', outline: 'none', width: '100%', fontFamily: 'Inter' }
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-1">Admin Panel</h1>
-            <p className="text-gray-400">Manage Spekit knowledge cards</p>
-          </div>
-          <button onClick={() => { setShowForm(true); setEditId(null); setForm(blank) }}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-5 py-2.5 rounded-xl transition-all">
-            <Plus size={16}/> New Spek
-          </button>
+    <div style={{ minHeight: '100vh', background: '#050508', paddingTop: '60px' }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
+
+        <div style={{ marginBottom: '28px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, fontFamily: 'Space Grotesk', color: '#f0f0f8', marginBottom: '6px' }}>Admin Panel</h1>
+          <p style={{ fontSize: '14px', color: '#8888aa' }}>Manage knowledge base speks</p>
         </div>
 
-        {msg && <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm px-4 py-3 rounded-xl mb-4">{msg}</div>}
-
-        {/* Form Modal */}
-        {showForm && (
-          <div className="glass p-6 mb-6 border-green-500/20">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-semibold">{editId ? 'Edit Spek' : 'New Spek'}</h2>
-              <button onClick={() => { setShowForm(false); setEditId(null) }}><X size={18} className="text-gray-400"/></button>
-            </div>
-            <div className="grid gap-3">
-              <input className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500/50"
-                placeholder="Title *" value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}/>
-              <textarea rows={4} className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500/50 resize-none"
-                placeholder="Content *" value={form.content} onChange={e => setForm(f => ({...f, content: e.target.value}))}/>
-              <div className="grid grid-cols-2 gap-3">
-                <select className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500/50 bg-gray-900"
-                  value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <input className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500/50"
-                  placeholder="Tooltip hint (optional)" value={form.tooltip_hint} onChange={e => setForm(f => ({...f, tooltip_hint: e.target.value}))}/>
-              </div>
-              <button onClick={handleSave} disabled={loading}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-semibold py-2.5 rounded-xl transition-all">
-                <Check size={16}/> {loading ? 'Saving...' : 'Save Spek'}
+        {/* Form */}
+        <div style={{ background: '#111118', border: '1px solid #1e1e2e', borderRadius: '16px', padding: '24px', marginBottom: '28px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: editing ? '#f59e0b' : '#4f8ef7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
+            {editing ? '✏️ Edit Spek' : '+ New Spek'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+            <input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              style={inp} onFocus={e => e.target.style.borderColor = '#4f8ef7'} onBlur={e => e.target.style.borderColor = '#1e1e2e'} />
+            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              style={{ ...inp, cursor: 'pointer' }}>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <textarea placeholder="Content" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+            rows={4} style={{ ...inp, resize: 'vertical', marginBottom: '12px', display: 'block' }}
+            onFocus={e => e.target.style.borderColor = '#4f8ef7'} onBlur={e => e.target.style.borderColor = '#1e1e2e'} />
+          <input placeholder="Tooltip hint (optional)" value={form.tooltip_hint} onChange={e => setForm(f => ({ ...f, tooltip_hint: e.target.value }))}
+            style={{ ...inp, marginBottom: '16px' }} onFocus={e => e.target.style.borderColor = '#4f8ef7'} onBlur={e => e.target.style.borderColor = '#1e1e2e'} />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={save} disabled={saving || !form.title || !form.content} style={{
+              background: '#4f8ef7', color: '#fff', border: 'none', borderRadius: '8px',
+              padding: '10px 20px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px', opacity: (!form.title || !form.content) ? 0.5 : 1
+            }}>
+              <Save size={14} /> {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+            </button>
+            {editing && (
+              <button onClick={cancel} style={{ background: '#111118', color: '#8888aa', border: '1px solid #1e1e2e', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <X size={14} /> Cancel
               </button>
-            </div>
+            )}
+          </div>
+        </div>
+
+        {/* List */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#44445a' }}>Loading...</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {speks.map(s => (
+              <div key={s.id} style={{
+                background: editing === s.id ? 'rgba(245,158,11,0.05)' : '#111118',
+                border: `1px solid ${editing === s.id ? 'rgba(245,158,11,0.3)' : '#1e1e2e'}`,
+                borderRadius: '12px', padding: '16px 20px',
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px'
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#f0f0f8' }}>{s.title}</span>
+                    <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.2)', color: '#4f8ef7', fontWeight: 600 }}>{s.category}</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#8888aa', lineHeight: 1.5, marginBottom: s.tooltip_hint ? '6px' : 0 }}>
+                    {s.content.length > 120 ? s.content.slice(0, 120) + '...' : s.content}
+                  </p>
+                  {s.tooltip_hint && <p style={{ fontSize: '11px', color: '#4f8ef7' }}>💡 {s.tooltip_hint}</p>}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <button onClick={() => startEdit(s)} style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Edit2 size={12} /> Edit
+                  </button>
+                  <button onClick={() => del(s.id)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Trash2 size={12} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Speks table */}
-        <div className="glass overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-0 text-xs text-gray-500 border-b border-white/10 px-5 py-3">
-            <span>Title / Content</span><span>Category</span><span className="px-4">Tooltip</span><span>Actions</span>
-          </div>
-          {speks.map(spek => (
-            <div key={spek.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-0 items-center border-b border-white/5 px-5 py-3 hover:bg-white/2 transition-all">
-              <div>
-                <div className="text-sm font-medium text-white">{spek.title}</div>
-                <div className="text-xs text-gray-500 truncate max-w-sm mt-0.5">{spek.content}</div>
-              </div>
-              <span className="text-xs bg-white/5 px-2 py-1 rounded-full text-gray-400 mx-3">{spek.category}</span>
-              <span className="text-xs text-gray-600 px-4 max-w-32 truncate">{spek.tooltip_hint || '—'}</span>
-              <div className="flex gap-2">
-                <button onClick={() => handleEdit(spek)} className="p-1.5 hover:bg-blue-500/20 rounded-lg text-blue-400 transition-all"><Pencil size={14}/></button>
-                <button onClick={() => handleDelete(spek.id)} className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 transition-all"><Trash2 size={14}/></button>
-              </div>
-            </div>
-          ))}
-          {speks.length === 0 && <p className="text-center py-10 text-gray-600">No speks yet. Create one!</p>}
-        </div>
-        <p className="text-gray-600 text-sm mt-3">{speks.length} speks total</p>
       </div>
     </div>
   )

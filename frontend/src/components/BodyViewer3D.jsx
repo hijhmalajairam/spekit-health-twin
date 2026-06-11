@@ -1,6 +1,7 @@
-import { Suspense, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, useGLTF, Environment, Html, Bounds, useBounds } from '@react-three/drei'
+import { Suspense, useRef, useState, useEffect } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls, useGLTF, Environment, Html } from '@react-three/drei'
+import { Box3, Vector3 } from 'three'
 import { Bone, Brain, Heart, Wind } from 'lucide-react'
 
 const MODELS = [
@@ -11,36 +12,78 @@ const MODELS = [
 ]
 
 const RISK_COLOR = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444' }
-const RISK_HEX   = { low: 0x22c55e,  medium: 0xf59e0b,  high: 0xef4444 }
+const RISK_HEX   = { low: 0x22c55e, medium: 0xf59e0b, high: 0xef4444 }
 
-function AutoFitInner() {
-  const bounds = useBounds()
-  useFrame(() => { try { bounds.refresh().fit() } catch {} }, 1)
+function getOrganByY(yNorm) {
+  if (yNorm > 0.80) return 'brain'
+  if (yNorm > 0.55) return 'heart'
+  if (yNorm > 0.35) return 'liver'
+  if (yNorm > 0.15) return 'kidneys'
   return null
 }
 
-function Model({ url, organRisks, overallRisk }) {
+function AutoFitModel({ url, organRisks, overallRisk }) {
   const { scene } = useGLTF(url)
+  const { camera } = useThree()
   const ref = useRef()
-  useFrame((_, delta) => { if (ref.current) ref.current.rotation.y += delta * 0.25 })
+  const frameCount = useRef(0)
+  const colored = useRef(false)
 
-  scene.traverse((child) => {
-    if (!child.isMesh) return
-    const name = child.name?.toLowerCase() || ''
-    let risk = null
-    if (name.includes('heart'))  risk = organRisks?.heart
-    if (name.includes('brain'))  risk = organRisks?.brain
-    if (name.includes('lung'))   risk = organRisks?.lungs
-    if (name.includes('liver'))  risk = organRisks?.liver
-    if (name.includes('kidney')) risk = organRisks?.kidneys
-    if (child.material) {
-      child.material = child.material.clone()
-      const hex = risk ? RISK_HEX[risk] : (RISK_HEX[overallRisk] || null)
-      if (hex) { child.material.emissive?.setHex(hex); child.material.emissiveIntensity = risk ? 0.5 : 0.12 }
+  useEffect(() => {
+    frameCount.current = 0
+    colored.current = false
+  }, [url])
+
+  useFrame((_, delta) => {
+    if (!ref.current) return
+    ref.current.rotation.y += delta * 0.25
+
+    frameCount.current += 1
+
+    // auto-fit camera after frame 3
+    if (frameCount.current === 3) {
+      const box = new Box3().setFromObject(ref.current)
+      const size = box.getSize(new Vector3())
+      const center = box.getCenter(new Vector3())
+      const maxDim = Math.max(size.x, size.y, size.z)
+      if (maxDim > 0) {
+        const dist = (maxDim / (2 * Math.tan((Math.PI * 30) / 360))) * 1.8
+        camera.position.set(center.x, center.y, center.z + dist)
+        camera.lookAt(center)
+        camera.updateProjectionMatrix()
+      }
+    }
+
+    // apply zone coloring after frame 5 (model fully loaded)
+    if (frameCount.current >= 5) {
+      
+      const modelBox = new Box3().setFromObject(ref.current)
+      const modelMin = modelBox.min.y
+      const modelMax = modelBox.max.y
+      const modelHeight = modelMax - modelMin
+      if (modelHeight === 0) return
+
+      ref.current.traverse((child) => {
+        if (!child.isMesh) return
+        const meshBox = new Box3().setFromObject(child)
+        const meshCenterY = (meshBox.min.y + meshBox.max.y) / 2
+        const yNorm = (meshCenterY - modelMin) / modelHeight
+        const organ = getOrganByY(yNorm)
+        const risk = organ ? organRisks?.[organ] : null
+        if (child.material) {
+          child.material = child.material.clone()
+          if (risk) {
+            child.material.color?.setHex(RISK_HEX[risk])
+          } else {
+            child.material.color?.setHex(0x888888)
+          }
+        }
+      })
     }
   })
 
-  return <primitive ref={ref} object={scene} scale={[1.8, 1.8, 1.8]} position={[0, -1, 0]} />
+  const scaleFactor = url.includes('muscles') ? 10 : 1
+  return <primitive ref={ref} object={scene} scale={[scaleFactor, scaleFactor, scaleFactor]} />
 }
 
 function LoadingFallback() {
@@ -56,7 +99,7 @@ function SVGBody({ organRisks, organCauses }) {
     { id: 'kidneys', cx: 90,  cy: 158, rx: 10, ry: 12, label: 'Kidneys' },
   ]
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '20px', position: 'relative' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '20px' }}>
       <svg viewBox="0 0 200 340" style={{ height: '100%', maxHeight: '460px', width: 'auto' }}>
         <ellipse cx="100" cy="40" rx="26" ry="30" fill="#1a1a2e" stroke="#2a2a3d" strokeWidth="1.5"/>
         <rect x="91" y="68" width="18" height="18" rx="4" fill="#1a1a2e" stroke="#2a2a3d" strokeWidth="1.5"/>
@@ -106,7 +149,6 @@ export default function BodyViewer3D({ organRisks = {}, organCauses = {}, overal
           }}>{v === '3d' ? '3D Model' : '2D Map'}</button>
         ))}
       </div>
-
       {view === '3d' && (
         <>
           <div style={{ display: 'flex', borderBottom: '1px solid #1e1e2e', flexShrink: 0 }}>
@@ -123,18 +165,15 @@ export default function BodyViewer3D({ organRisks = {}, organCauses = {}, overal
             ))}
           </div>
           <div style={{ flex: 1, position: 'relative', background: '#080810', minHeight: '400px' }}>
-            <Canvas camera={{ position: [0, 0, 2.5], fov: 50 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%' }}>
+            <Canvas camera={{ position: [0, 0, 10], fov: 30 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%' }}>
               <ambientLight intensity={0.6}/>
               <directionalLight position={[5, 5, 5]} intensity={1.2}/>
               <pointLight position={[0, 3, 0]} intensity={0.8} color={RISK_COLOR[overallRisk] || '#4f8ef7'}/>
               <Suspense fallback={<LoadingFallback/>}>
-                
-                  <Model key={activeModel} url={current.file} organRisks={organRisks} overallRisk={overallRisk}/>
-                  
-                
+                <AutoFitModel key={activeModel} url={current.file} organRisks={organRisks} overallRisk={overallRisk}/>
                 <Environment preset="studio"/>
               </Suspense>
-              <OrbitControls enablePan={false} minDistance={1} maxDistance={20} autoRotate={autoRotate} autoRotateSpeed={1.2}/>
+              <OrbitControls enablePan={false} minDistance={0.5} maxDistance={100}/>
             </Canvas>
             <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: '#44445a', pointerEvents: 'none' }}>
               drag to rotate · scroll to zoom
@@ -142,13 +181,11 @@ export default function BodyViewer3D({ organRisks = {}, organCauses = {}, overal
           </div>
         </>
       )}
-
       {view === '2d' && (
         <div style={{ flex: 1, background: '#080810', minHeight: '400px' }}>
           <SVGBody organRisks={organRisks} organCauses={organCauses}/>
         </div>
       )}
-
       {Object.keys(organRisks).length > 0 && (
         <div style={{ padding: '10px 16px', borderTop: '1px solid #1e1e2e', display: 'flex', flexWrap: 'wrap', gap: '6px', flexShrink: 0, background: '#0a0a12' }}>
           {Object.entries(organRisks).map(([organ, level]) => {
