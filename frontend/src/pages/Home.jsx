@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom'
-
-const FEATURES = [
-  { icon: '⚕', title: 'Health Twin Simulator', desc: 'Enter your vitals and get AI-powered organ risk analysis with a 3D body map.', to: '/simulator', color: '#4f8ef7' },
-  { icon: '🧠', title: 'Brain Games', desc: 'Test memory, reaction time, and pattern recognition. Get AI mental health scores.', to: '/braingames', color: '#c084fc' },
-  { icon: '📚', title: 'Knowledge Base', desc: 'Browse health articles, tips, and medical knowledge organized by category.', to: '/knowledge', color: '#22c55e' },
-  { icon: '📈', title: 'History', desc: 'Track your simulation history and monitor health trends over time.', to: '/history', color: '#f59e0b' },
-]
+import { useTranslation } from 'react-i18next'
 
 export default function Home() {
   const user = JSON.parse(localStorage.getItem('ht_user') || 'null')
+  const { t } = useTranslation()
+
+  const FEATURES = [
+    { icon: '⚕', title: t('Simulator'), desc: t('SimDesc'), to: '/simulator', color: '#4f8ef7' },
+    { icon: '🧠', title: t('BrainGames'), desc: t('BrainDesc'), to: '/braingames', color: '#c084fc' },
+    { icon: '📚', title: t('Knowledge'), desc: t('KnowDesc'), to: '/knowledge', color: '#22c55e' },
+    { icon: '📈', title: t('History'), desc: t('HistDesc'), to: '/history', color: '#f59e0b' },
+  ]
 
   return (
     <div style={{ minHeight: '100vh', background: '#050508', paddingTop: '60px' }}>
@@ -21,7 +23,7 @@ export default function Home() {
           borderRadius: '20px', padding: '6px 16px', fontSize: '12px',
           color: '#4f8ef7', fontWeight: 600, marginBottom: '32px', letterSpacing: '0.05em'
         }}>
-          ⚡ AI-POWERED HEALTH ANALYSIS
+          {t('AI_Badge')}
         </div>
 
         <h1 style={{
@@ -29,15 +31,15 @@ export default function Home() {
           fontFamily: 'Space Grotesk', letterSpacing: '-0.03em',
           marginBottom: '24px', color: '#f0f0f8'
         }}>
-          Your Digital<br />
-          <span style={{ color: '#4f8ef7' }}>Health Twin</span>
+          {t('Hero1')}<br />
+          <span style={{ color: '#4f8ef7' }}>{t('Hero2')}</span>
         </h1>
 
         <p style={{
           fontSize: '18px', color: '#8888aa', lineHeight: 1.7,
           maxWidth: '560px', margin: '0 auto 40px'
         }}>
-          Simulate your body, map organ risks, predict your future health — all powered by AI. Know your risks before they become problems.
+          {t('HeroDesc')}
         </p>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -47,7 +49,7 @@ export default function Home() {
             textDecoration: 'none', fontFamily: 'Space Grotesk',
             transition: 'opacity 0.2s'
           }}>
-            {user ? 'Open Simulator →' : 'Get Started Free →'}
+            {user ? t('OpenSim') : t('GetStarted')}
           </Link>
           {!user && (
             <Link to="/login" style={{
@@ -56,7 +58,7 @@ export default function Home() {
               padding: '14px 32px', fontSize: '15px', fontWeight: 600,
               textDecoration: 'none', transition: 'color 0.2s'
             }}>
-              Sign In
+              {t('SignIn')}
             </Link>
           )}
         </div>
@@ -65,7 +67,7 @@ export default function Home() {
       {/* Stats row */}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px 60px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
-          {[['20+', 'Health Inputs'], ['5', 'Organ Risk Maps'], ['3', 'AI Forecasts'], ['4', 'Brain Games']].map(([num, label]) => (
+          {[['20+', t('Inputs')], ['5', t('RiskMaps')], ['3', t('AIForecasts')], ['4', t('BGames')]].map(([num, label]) => (
             <div key={label} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '36px', fontWeight: 900, color: '#4f8ef7', fontFamily: 'Space Grotesk' }}>{num}</div>
               <div style={{ fontSize: '12px', color: '#44445a', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
@@ -96,7 +98,7 @@ export default function Home() {
                 }}>{icon}</div>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: '#f0f0f8', marginBottom: '8px', fontFamily: 'Space Grotesk' }}>{title}</div>
                 <div style={{ fontSize: '13px', color: '#8888aa', lineHeight: 1.6 }}>{desc}</div>
-                <div style={{ marginTop: '16px', fontSize: '12px', color, fontWeight: 600 }}>Open →</div>
+                <div style={{ marginTop: '16px', fontSize: '12px', color, fontWeight: 600 }}>{t('OpenBtn')}</div>
               </div>
             </Link>
           ))}
