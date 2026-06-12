@@ -34,4 +34,5 @@ export const simulatorAPI = {
   whatif: (data) => api.post('/whatif', data),
   history: (userId) => api.get(`/history/${userId}`),
   createUser: (data) => api.post('/users', data),
+  evaluateGames: (data) => api.post('/braingames/evaluate', data),
 }

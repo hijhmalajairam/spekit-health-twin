@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict
+from pydantic import BaseModel
 import json
 from core.database import get_db
 from models.models import HealthSimulation, User
@@ -202,3 +203,43 @@ def get_history(user_id: int, db: Session = Depends(get_db)):
     return db.query(HealthSimulation).filter(
         HealthSimulation.user_id == user_id
     ).order_by(HealthSimulation.created_at.desc()).limit(10).all()
+
+# --- BRAIN GAMES ROUTE ---
+class GameScoreInfo(BaseModel):
+    score: int
+    note: str
+
+class BrainGameInput(BaseModel):
+    scores: Dict[str, GameScoreInfo]
+
+@router.post("/braingames/evaluate")
+def evaluate_brain_games(
+    data: BrainGameInput,
+    x_groq_key: Optional[str] = Header(None),
+    x_gemini_key: Optional[str] = Header(None)
+):
+    from core.ai_provider import call_ai
+    
+    score_text = "\n".join([f"- {game}: {info.score}/100 ({info.note})" for game, info in data.scores.items()])
+    
+    prompt = f"""A user completed brain games with these scores:
+{score_text}
+
+Respond ONLY with a JSON object (no markdown, no backticks):
+{{
+  "overall": 0-100,
+  "mental_health": "low concern|medium concern|high concern",
+  "strengths": ["strength1", "strength2"],
+  "areas": ["area to improve"],
+  "advice": "2 sentence mental health advice"
+}}"""
+    
+    try:
+        text = call_ai(prompt, groq_key=x_groq_key, gemini_key=x_gemini_key)
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text.strip())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
