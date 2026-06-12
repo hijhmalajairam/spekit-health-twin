@@ -5,6 +5,13 @@ const api = axios.create({ baseURL: 'https://spekit-health-twin.onrender.com/api
 api.interceptors.request.use(config => {
   const user = JSON.parse(localStorage.getItem('ht_user') || 'null')
   if (user?.token) config.headers.Authorization = `Bearer ${user.token}`
+
+  // Grab custom keys and attach them as hidden headers
+  const customGroq = localStorage.getItem('ht_groq_key')
+  const customGemini = localStorage.getItem('ht_gemini_key')
+  if (customGroq) config.headers['X-Groq-Key'] = customGroq
+  if (customGemini) config.headers['X-Gemini-Key'] = customGemini
+
   return config
 })
 

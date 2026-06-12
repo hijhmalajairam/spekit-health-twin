@@ -1,23 +1,26 @@
 import json
 from core.config import settings
 
-def call_ai(prompt: str) -> str:
+def call_ai(prompt: str, groq_key: str = None, gemini_key: str = None) -> str:
     provider = settings.AI_PROVIDER.lower()
 
     if provider == "groq":
         from groq import Groq
         import os as _os
-        client = Groq(api_key=settings.GROQ_API_KEY)
+        # Use custom key if provided, else use global .env key
+        active_key = groq_key if groq_key else settings.GROQ_API_KEY
+        client = Groq(api_key=active_key)
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
         )
         return completion.choices[0].message.content
-    # ── Gemini ──────────────────────────────────────────
+
     if provider == "gemini":
         from google import genai
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        active_key = gemini_key if gemini_key else settings.GEMINI_API_KEY
+        client = genai.Client(api_key=active_key)
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
