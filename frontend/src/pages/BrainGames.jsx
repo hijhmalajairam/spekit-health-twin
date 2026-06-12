@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { simulatorAPI } from '../utils/api'
 
 const GAMES = [
@@ -13,6 +14,7 @@ const RISK_COLOR = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444' }
 // ── Memory Match ──────────────────────────────────────────────
 const EMOJIS = ['🫀','🧠','🫁','🦷','👁️','🦴','🩸','💊']
 function MemoryGame({ onScore }) {
+  const { t } = useTranslation()
   const makeCards = () => [...EMOJIS,...EMOJIS].map((e,i)=>({id:i,emoji:e,flipped:false,matched:false})).sort(()=>Math.random()-0.5)
   const [cards, setCards] = useState(makeCards)
   const [flipped, setFlipped] = useState([])
@@ -53,8 +55,8 @@ function MemoryGame({ onScore }) {
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:'16px',fontSize:'13px',color:'var(--text-secondary)'}}>
-        <span>Moves: <b style={{color:'var(--text-primary)'}}>{moves}</b></span>
-        {done && <span style={{color:'#22c55e',fontWeight:600}}>✓ Complete!</span>}
+        <span>{t('Moves')}: <b style={{color:'var(--text-primary)'}}>{moves}</b></span>
+        {done && <span style={{color:'#22c55e',fontWeight:600}}>{t('Complete')}</span>}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
         {cards.map((c,i) => (
@@ -69,13 +71,14 @@ function MemoryGame({ onScore }) {
           </div>
         ))}
       </div>
-      {done && <button onClick={()=>{setCards(makeCards());setMoves(0);setFlipped([]);setDone(false)}} style={{marginTop:'14px',width:'100%',padding:'10px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600}}>Play Again</button>}
+      {done && <button onClick={()=>{setCards(makeCards());setMoves(0);setFlipped([]);setDone(false)}} style={{marginTop:'14px',width:'100%',padding:'10px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600}}>{t('PlayAgain')}</button>}
     </div>
   )
 }
 
 // ── Reaction Time ─────────────────────────────────────────────
 function ReactionGame({ onScore }) {
+  const { t } = useTranslation()
   const [state, setState] = useState('idle')
   const [times, setTimes] = useState([])
   const [startT, setStartT] = useState(null)
@@ -134,7 +137,7 @@ function ReactionGame({ onScore }) {
         ? <button onClick={start} disabled={state==='waiting'||state==='go'} style={{padding:'10px 24px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600}}>
             {state==='waiting'||state==='go'?'...':'Round '+(times.length+1)+'/5'}
           </button>
-        : <button onClick={()=>setTimes([])} style={{padding:'10px 24px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600}}>Play Again</button>
+        : <button onClick={()=>setTimes([])} style={{padding:'10px 24px',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600}}>{t('PlayAgain')}</button>
       }
     </div>
   )
@@ -143,6 +146,7 @@ function ReactionGame({ onScore }) {
 // ── Pattern Sequence ──────────────────────────────────────────
 const PAT_COLORS = ['#ef4444','#4f8ef7','#22c55e','#f59e0b']
 function PatternGame({ onScore }) {
+  const { t } = useTranslation()
   const [seq, setSeq] = useState([])
   const [userSeq, setUserSeq] = useState([])
   const [phase, setPhase] = useState('idle')
@@ -213,9 +217,10 @@ function PatternGame({ onScore }) {
 // ── Mini Sudoku (4x4) ─────────────────────────────────────────
 const PUZZLES = [
   { puzzle:[[1,0,0,4],[0,4,0,0],[0,0,4,0],[4,0,0,1]], solution:[[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]] },
-  { puzzle:[[0,2,0,0],[0,0,0,3],[4,0,0,0],[0,0,1,0]], solution:[[1,2,4,3],[2,1,3,4],[4,3,2,1],[3,4,1,2]] }, // simplified valid
+  { puzzle:[[0,2,0,0],[0,0,0,3],[4,0,0,0],[0,0,1,0]], solution:[[1,2,4,3],[2,1,3,4],[4,3,2,1],[3,4,1,2]] },
 ]
 function SudokuGame({ onScore }) {
+  const { t } = useTranslation()
   const [pIdx] = useState(()=>Math.floor(Math.random()*PUZZLES.length))
   const p = PUZZLES[pIdx]
   const [grid, setGrid] = useState(p.puzzle.map(r=>[...r]))
@@ -239,8 +244,8 @@ function SudokuGame({ onScore }) {
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:'12px',fontSize:'13px',color:'var(--text-secondary)'}}>
-        <span>Errors: <b style={{color:'#ef4444'}}>{errors}</b></span>
-        {done && <span style={{color:'#22c55e',fontWeight:600}}>✓ Solved!</span>}
+        <span>{t('Errors')}: <b style={{color:'#ef4444'}}>{errors}</b></span>
+        {done && <span style={{color:'#22c55e',fontWeight:600}}>{t('Solved')}</span>}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'4px',maxWidth:'220px',margin:'0 auto 16px'}}>
         {grid.map((row,r)=>row.map((cell,c)=>{
@@ -268,32 +273,9 @@ function SudokuGame({ onScore }) {
   )
 }
 
-// ── AI Evaluation ─────────────────────────────────────────────
-async function getAIEval(scores) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:400,
-      messages:[{role:'user',content:`A user completed brain games with these scores:
-${Object.entries(scores).map(([g,s])=>`- ${g}: ${s.score}/100 (${s.note})`).join('\n')}
-
-Respond ONLY with JSON (no markdown):
-{
-  "overall": 0-100,
-  "mental_health": "low|medium|high concern",
-  "strengths": ["strength1"],
-  "areas": ["area to improve"],
-  "advice": "2 sentence mental health advice"
-}`}]}),
-  })
-  const d = await res.json()
-  return JSON.parse(d.content[0].text)
-}
-
 // ── Main Page ─────────────────────────────────────────────────
 export default function BrainGames() {
+  const { t } = useTranslation()
   const [active, setActive] = useState(null)
   const [scores, setScores] = useState({})
   const [eval_, setEval] = useState(null)
@@ -303,14 +285,17 @@ export default function BrainGames() {
     setScores(s => ({ ...s, [gameId]: { score, note } }))
   }
 
+  // ── THE BACKEND ROUTING FIX ──
   const runEval = async () => {
     if (Object.keys(scores).length === 0) return
     setEvalLoading(true)
     try {
-      const result = await getAIEval(scores)
-      setEval(result)
+      // It now securely sends the scores to YOUR backend, 
+      // which attaches the X-Groq-Key automatically!
+      const result = await simulatorAPI.evaluateGames({ scores })
+      setEval(result.data) 
     } catch (e) {
-      setEval({ overall: 0, mental_health: 'unknown', strengths: [], areas: [], advice: 'Could not evaluate. Check API.' })
+      setEval({ overall: 0, mental_health: 'unknown', strengths: [], areas: [], advice: 'Could not evaluate. Check API limits or Keys.' })
     } finally { setEvalLoading(false) }
   }
 
@@ -321,8 +306,8 @@ export default function BrainGames() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
 
         <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, fontFamily: 'Space Grotesk', marginBottom: '6px' }}>Brain Games</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Play games, earn scores, and get AI mental health analysis</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, fontFamily: 'Space Grotesk', marginBottom: '6px' }}>{t('BrainGames')}</h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{t('BG_Sub')}</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -365,7 +350,7 @@ export default function BrainGames() {
           {/* Scores + AI eval */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>Your Scores</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>{t('YourScores')}</div>
               {GAMES.map(g => (
                 <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -388,13 +373,13 @@ export default function BrainGames() {
                 cursor: Object.keys(scores).length===0 ? 'not-allowed' : 'pointer',
                 fontWeight: 700, fontSize: '14px', fontFamily: 'Space Grotesk'
               }}>
-                {evalLoading ? 'Analyzing...' : '🧠 Get AI Mental Health Report'}
+                {evalLoading ? t('Analyzing') : t('GetAIReport')}
               </button>
             </div>
 
             {eval_ && (
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>AI Mental Health Report</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>{t('AIReport')}</div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
                   <svg width="70" height="70" viewBox="0 0 70 70">
@@ -417,7 +402,7 @@ export default function BrainGames() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#22c55e', marginBottom: '8px', textTransform: 'uppercase' }}>Strengths</div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#22c55e', marginBottom: '8px', textTransform: 'uppercase' }}>{t('Strengths')}</div>
                     {(eval_.strengths||[]).map((s,i)=>(
                       <div key={i} style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', display:'flex', gap:'6px' }}>
                         <span style={{color:'#22c55e'}}>✓</span>{s}
@@ -425,7 +410,7 @@ export default function BrainGames() {
                     ))}
                   </div>
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#f59e0b', marginBottom: '8px', textTransform: 'uppercase' }}>Improve</div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#f59e0b', marginBottom: '8px', textTransform: 'uppercase' }}>{t('Improve')}</div>
                     {(eval_.areas||[]).map((s,i)=>(
                       <div key={i} style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', display:'flex', gap:'6px' }}>
                         <span style={{color:'#f59e0b'}}>→</span>{s}
